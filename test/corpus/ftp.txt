@@ -1,0 +1,28 @@
+220-Welcome to Example FTP Server
+220-  We like to have fun around here.
+220 -----
+USER anonymous
+331 Please specify the password.
+PASS guest@example.com
+230 Login successful.
+SYST
+215 UNIX Type: L8
+PWD
+257 "/"
+CWD pub
+250 Directory changed to /pub
+TYPE I
+200 Switching to Binary mode.
+PASV
+227 Entering Passive Mode (192,168,1,2,195,80)
+150 Opening data connection for file list.
+drwxr-xr-x   2 user  group     4096 Oct 10 12:00 docs
+-rw-r--r--   1 user  group    10240 Oct 10 12:01 file1.txt
+-rw-r--r--   1 user  group    20480 Oct 10 12:02 file2.jpg
+226 Transfer complete.
+RETR file1.txt
+150 Opening BINARY mode data connection for file1.txt (10240 bytes).
+<file data>
+226 Transfer complete.
+QUIT
+221 Goodbye.

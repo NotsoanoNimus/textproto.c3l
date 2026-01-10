@@ -1,0 +1,20 @@
+MAIL FROM:<joe@someplace.org>
+250 <joe@someplace.org>… Sender ok
+RCPT TO:<jane@somewhereelse.com>
+250 <jane@somewhereelse.com>… Recipient ok
+DATA
+354 Enter mail, end with "." on a line by itself
+From: Joe Sender <joe@someplace.org>
+To: Jane Receiver <jane@somewhereelse.com>
+Date: Sun, 1 Jun 2003 14:17:31 —0800
+Subject: Lunch tomorrow
+
+Hey Jane,
+
+It's my turn for lunch tomorrow. I was thinking we could
+[rest of message]
+Hope you are free. Send me a reply back when you get a chance.
+Joe.
+.
+250 OK
+
