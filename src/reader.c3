@@ -13,10 +13,6 @@ faultdef
 	UNEXPECTED_MULTILINE_RESPONSE,
 	UNTERMINATED_MULTI_LINE_STATUS;
 
-interface IoStream : InStream, OutStream {}
-
-alias LineValidationFunc = fn bool? (String, usz);
-
 
 <* Represents a numeric status response from a server. *>
 struct TextProtoStatus (Printable)
@@ -33,7 +29,7 @@ struct TextProtoStatus (Printable)
 
 fn usz? TextProtoStatus.to_format(&self, Formatter* f) @dynamic
 {
-	return f.printf("%03d %s", self.code, self.message);
+	return f.printf("%03d%c%s", self.code, self.continued ? '-' : ' ', self.message);
 }
 
 fn bool TextProtoStatus.eq(&self, TextProtoStatus other) @operator(==)
@@ -61,17 +57,17 @@ struct HoldoverValue @local {
 	bool set;
 }
 
-struct TextProtoReader @generic(IoStream)
+struct TextProtoReader
 {
-	inline IoStream wrapped;
+	inline InStream wrapped;
 	Allocator allocator;
 	HoldoverValue holdover_line;
 }
 
-fn TextProtoReader TextProtoReader.init(&self, Allocator allocator, IoStream wrapped_stream)
+fn TextProtoReader TextProtoReader.init(&self, Allocator allocator, InStream wrapped_stream)
 	=> *self = { .allocator = allocator, .wrapped = wrapped_stream };
 
-fn TextProtoReader TextProtoReader.tinit(&self, IoStream wrapped_stream) => self.init(tmem, wrapped_stream);
+fn TextProtoReader TextProtoReader.tinit(&self, InStream wrapped_stream) => self.init(tmem, wrapped_stream);
 
 fn void TextProtoReader.destroy(&self)
 {
@@ -89,7 +85,7 @@ fn String? TextProtoReader.read_line(&self, LineValidationFunc validate_line = f
 	}
 	String line;
 	defer catch self.holdover_line = { line, true };
-	line = io::readline(self.allocator, &self.wrapped, limit)!;
+	line = io::readline(self.allocator, self.wrapped, limit)!;
 	if (!validate_line(line, 0)!) return INVALID_LINE?;
 	return line;
 }
