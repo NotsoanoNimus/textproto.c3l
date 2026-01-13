@@ -1,0 +1,7 @@
+testrun
+*.c3t
+*.o
+*.obj
+*.s
+*.a
+*.so
