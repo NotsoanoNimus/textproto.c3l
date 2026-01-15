@@ -7,11 +7,11 @@ const String CORPUS_SMTP = $embed("corpus/smtp.txt");
 const String CORPUS_HTTP = $embed("corpus/http.txt");
 const String CORPUS_FTP = $embed("corpus/ftp.txt");
 
-macro TextProtoReader @make_testbuf(#expr, bool $temp_allocator = true)
+macro TextProtoReader @make_testbuf(#expr, bool $temp_allocator = true, usz size = 1024)
 {
 	TextProtoReader r;
 	ByteBuffer _r;
-	_r.tinit(1024);
+	_r.tinit(size);
 	(void)_r.write(#expr)!!;
 	return $temp_allocator ??? r.tinit(&_r) : r.init(mem, &_r);
 }
@@ -171,4 +171,67 @@ fn void read_continued_code_line_errors()
 	// banner's final line still contains the continuation mark '-'
 	r = @make_testbuf("220-A\n220-B\ncontent");
 	test::@error(r.read_continued_code_line(), textproto::UNTERMINATED_MULTI_LINE_STATUS);
+}
+
+
+// ==================================================================================================================
+// Moving on to more verbatim tests from the Go 'textproto' package.
+fn void go_read_line()
+{
+	TextProtoReader r = @make_testbuf("line1\nline2\n");
+	test::@check(r.read_line()!! == "line1");
+	test::@check(r.read_line()!! == "line2");
+	test::@error(r.read_line(), io::EOF);
+}
+
+fn void go_read_long_line()
+{
+	char* tmp = mem::talloc_array(char, 10_002);
+	tmp[:10_000] = 'a';
+	tmp[10_000] = '\r';
+	tmp[10_001] = '\n';
+	TextProtoReader r = @make_testbuf(tmp[:10_002], size: 10_200);
+	String retval = r.read_line()!!;
+	test::@check(retval == tmp[:10_000]);
+	test::@error(r.read_line(), io::EOF);
+}
+
+fn void go_read_continued_line()
+{
+	TextProtoReader r = @make_testbuf("line1\nline\n 2\nline3\n");
+	test::@check(r.read_continued_line()!! == "line1");
+	test::@check(r.read_continued_line()!! == "line 2");
+	test::@check(r.read_continued_line()!! == "line3");
+	// test::@error(r.read_continued_line(), io::EOF); // TODO
+}
+
+fn void go_read_code_line()
+{
+	TextProtoReader r = @make_testbuf("123 hi\n234 bye\n345 no way\n");
+	test::@check(r.read_code_line()!! == (TextProtoStatus){ .code = 123, .message = "hi", .continued = false });
+	test::@check(r.read_code_line(23)!! == (TextProtoStatus){ .code = 234, .message = "bye", .continued = false });
+	test::@error(r.read_code_line(346), textproto::UNEXPECTED_CODE);
+	test::@check(r.read_code_line()!! == (TextProtoStatus){ .code = 345, .message = "no way", .continued = false });
+}
+
+fn void go_read_dot_lines()
+{
+	const String[] EXPECTED = { "dotlines", "foo", ".bar", "..baz", "quux", "" };
+	TextProtoReader r = @make_testbuf("dotlines\r\n.foo\r\n..bar\n...baz\nquux\r\n\r\n.\r\nanother\n");
+	String[] lines = r.read_dot_lines()!!;
+	foreach (i, wants : EXPECTED) test::eq(wants, lines[i]);
+	test::@error(r.read_dot_lines(), textproto::UNEXPECTED_EOF); // because 'another\n' doesn't end with [CRLF.CRLF]
+}
+
+fn void go_read_dot_bytes()
+{
+	const char[] EXPECTED = "dotlines\nfoo\n.bar\n..baz\nquux\n\n";
+	TextProtoReader r = @make_testbuf("dotlines\r\n.foo\r\n..bar\n...baz\nquux\r\n\r\n.\r\nanot.her\r\n");
+	char[] retval = r.read_dot_bytes()!!;
+	test::eq(retval, EXPECTED);
+}
+
+fn void go_read_mime_header()
+{
+	//
 }
